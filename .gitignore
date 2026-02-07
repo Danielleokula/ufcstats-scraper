@@ -1,0 +1,21 @@
+# Virtual environments
+.venv/
+venv/
+
+# PyCharm / JetBrains
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Data outputs (keep raw/processed out of git)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
