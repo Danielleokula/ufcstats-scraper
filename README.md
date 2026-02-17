@@ -1,9 +1,6 @@
 # UFCStats Scraper
 
 ## Purpose
-# UFCStats Scraper
-
-## Purpose
 This repository provides a reproducible pipeline that mirrors publicly available UFCStats data into structured datasets.
 
 The responsibility of this project is **data extraction and structural preparation only**.
