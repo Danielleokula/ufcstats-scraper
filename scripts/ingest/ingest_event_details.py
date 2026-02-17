@@ -60,7 +60,7 @@ def ingest_event_details(
     """
     Reads an event directory snapshot and scrapes each event-details page into a raw event_details snapshot.
 
-    Output is ONE ROW PER BOUT, mirroring the event-details table.
+    Output is ONE ROW PER fight, mirroring the event-details table.
     """
     inferred = infer_snapshot_from_path(str(input_event_directory))
     snap = snapshot or inferred or default_snapshot_utc()
@@ -78,7 +78,7 @@ def ingest_event_details(
     session = requests.Session()
     base_url = pick_base_url(session)
 
-    all_bouts: List[Dict[str, str]] = []
+    all_fights: List[Dict[str, str]] = []
     seen_keys: Set[str] = set()
 
     n = len(event_rows)
@@ -93,37 +93,37 @@ def ingest_event_details(
             continue
 
         try:
-            event_meta, bouts = parse_event_details(html, base_url=base_url)
+            event_meta, fights = parse_event_details(html, base_url=base_url)
         except Exception as e:
             print(f"[{i}/{n}] FAIL parse {event_url}: {e}", file=sys.stderr)
             continue
 
-        # Inject event context onto each bout row
-        for br in bouts:
+        # Inject event context onto each fight row
+        for br in fights:
             br["snapshot"] = snap
             br["event_url"] = event_url
             br["event_name"] = (event_meta.get("event_name") or ev.get("event_name") or "").strip()
             br["event_date_raw"] = (event_meta.get("event_date_raw") or ev.get("event_date_raw") or "").strip()
             br["event_location_raw"] = (event_meta.get("event_location_raw") or ev.get("event_location_raw") or "").strip()
 
-            # Dedup key: prefer bout_url if present; else event_url + bout_order
-            bout_url = (br.get("bout_url") or "").strip()
-            bout_order = (br.get("bout_order") or "").strip()
-            key = bout_url if bout_url else f"{event_url}__{bout_order}"
+            # Dedup key: prefer fight_url if present; else event_url + fight_order
+            fight_url = (br.get("fight_url") or "").strip()
+            fight_order = (br.get("fight_order") or "").strip()
+            key = fight_url if fight_url else f"{event_url}__{fight_order}"
 
             if not key or key in seen_keys:
                 continue
             seen_keys.add(key)
-            all_bouts.append(br)
+            all_fights.append(br)
 
         event_label = (event_meta.get("event_name") or ev.get("event_name") or "event").strip()
-        print(f"[{i}/{n}] {event_label} -> bouts: {len(bouts)}")
+        print(f"[{i}/{n}] {event_label} -> fights: {len(fights)}")
 
         if sleep_s > 0:
             time.sleep(sleep_s)
 
-    if not all_bouts:
-        raise RuntimeError("No bouts parsed. Check site reachability and parser selectors.")
+    if not all_fights:
+        raise RuntimeError("No fights parsed. Check site reachability and parser selectors.")
 
     # Stable schema for the raw snapshot (mirror of event-details table)
     fieldnames = [
@@ -132,8 +132,8 @@ def ingest_event_details(
         "event_name",
         "event_date_raw",
         "event_location_raw",
-        "bout_url",
-        "bout_order",
+        "fight_url",
+        "fight_order",
         "fighter_1_name",
         "fighter_1_url",
         "fighter_1_result",
@@ -154,13 +154,13 @@ def ingest_event_details(
         "time_raw",
     ]
 
-    write_csv(outpath, all_bouts, fieldnames=fieldnames)
+    write_csv(outpath, all_fights, fieldnames=fieldnames)
     return outpath
 
 
 def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Ingest UFCStats event-details pages into a raw event_details snapshot (one row per bout)."
+        description="Ingest UFCStats event-details pages into a raw event_details snapshot (one row per fight)."
     )
     p.add_argument(
         "--input",

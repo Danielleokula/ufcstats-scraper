@@ -68,9 +68,9 @@ def parse_event_details_html(html: str, base_url: str) -> Tuple[Dict[str, str], 
         - event_date_raw
         - event_location_raw
 
-      bouts: one row per bout with:
-        - bout_url
-        - bout_order
+      fights: one row per fight with:
+        - fight_url
+        - fight_order
         - fighter_1_name, fighter_1_url, fighter_1_result
         - fighter_2_name, fighter_2_url, fighter_2_result
         - kd_1,str_1,td_1,sub_1
@@ -97,24 +97,24 @@ def parse_event_details_html(html: str, base_url: str) -> Tuple[Dict[str, str], 
     }
 
     table = soup.select_one("table.b-fight-details__table") or soup.select_one("table")
-    bouts: List[Dict[str, str]] = []
+    fights: List[Dict[str, str]] = []
     if not table:
-        return event_meta, bouts
+        return event_meta, fights
 
-    bout_order = 0
+    fight_order = 0
 
     for tr in table.select("tbody tr"):
         tds = tr.select("td")
         if len(tds) < 10:
             continue
 
-        # Fight details link (bout_url)
-        bout_a = tr.select_one('a[href*="fight-details"]')
-        bout_url = normalize_ufcstats_url(bout_a.get("href", ""), base_url) if bout_a else ""
-        if not bout_url:
+        # Fight details link (fight_url)
+        fight_a = tr.select_one('a[href*="fight-details"]')
+        fight_url = normalize_ufcstats_url(fight_a.get("href", ""), base_url) if fight_a else ""
+        if not fight_url:
             continue
 
-        bout_order += 1
+        fight_order += 1
 
         # W/L badge (usually indicates winner; loser often blank)
         fighter_1_result = _parse_wl(tds[0])
@@ -136,16 +136,16 @@ def parse_event_details_html(html: str, base_url: str) -> Tuple[Dict[str, str], 
         td_1, td_2 = _two_lines(tds[4])
         sub_1, sub_2 = _two_lines(tds[5])
 
-        # Bout meta
+        # fight meta
         weight_class_raw = clean_text(tds[6].get_text(" ", strip=True))
         method_raw = clean_text(tds[7].get_text(" ", strip=True))
         round_raw = clean_text(tds[8].get_text(" ", strip=True))
         time_raw = clean_text(tds[9].get_text(" ", strip=True))
 
-        bouts.append(
+        fights.append(
             {
-                "bout_url": bout_url,
-                "bout_order": str(bout_order),
+                "fight_url": fight_url,
+                "fight_order": str(fight_order),
                 "fighter_1_name": fighter_1_name,
                 "fighter_1_url": fighter_1_url,
                 "fighter_1_result": fighter_1_result,
@@ -167,7 +167,7 @@ def parse_event_details_html(html: str, base_url: str) -> Tuple[Dict[str, str], 
             }
         )
 
-    return event_meta, bouts
+    return event_meta, fights
 
 
 def parse_event_details(html: str, base_url: str):

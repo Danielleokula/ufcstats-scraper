@@ -79,7 +79,7 @@ Raw extract types include:
 - Fighter directory pages
 - Fighter profile pages
 - Event directory pages
-- Event pages (bout listings)
+- Event pages (fight listings)
 
 Raw data is **never modified** after ingestion.
 

@@ -33,6 +33,7 @@ def main() -> int:
     event_details_csv = RAW_DIR / f"event_details__ufcstats__{snap}.csv"
     fighter_dir_csv = RAW_DIR / f"fighter_directory__ufcstats__{snap}.csv"
     fighter_details_csv = RAW_DIR / f"fighter_details__ufcstats__{snap}.csv"
+    fight_details_csv = RAW_DIR / f"fight_details__ufcstats__{snap}.csv"
 
     py = sys.executable
 
@@ -72,11 +73,37 @@ def main() -> int:
         ]
     )
 
+    # 5) Fight details (reads event details; needs fight_url)
+    fight_limit = os.getenv(" ")  # optional
+    args = [
+        py,
+        "-m",
+        "scripts.ingest.ingest_fight_details",
+        "--input",
+        str(event_details_csv),
+        "--outdir",
+        str(RAW_DIR),
+        "--snapshot",
+        snap,
+    ]
+
+    #Optional test mode: UFCPIPE_LIMIT_FIGHTS=25
+    if fight_limit:
+        args += ["--limit", str(int(fight_limit))]
+
+    # Optional resume mode: UFCPIPE_RESUME=1
+    if os.getenv("UFCPIPE_RESUME"):
+        args += ["--resume"]
+
+    _run(args)
+
+
     print("\n=== Raw pipeline complete ===")
     print(f"Wrote: {event_dir_csv}")
     print(f"Wrote: {fighter_dir_csv}")
     print(f"Wrote: {event_details_csv}")
     print(f"Wrote: {fighter_details_csv}")
+    print(f"Wrote: {fight_details_csv}")
     return 0
 
 
