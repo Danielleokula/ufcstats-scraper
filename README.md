@@ -1,14 +1,76 @@
 # UFCStats Scraper
 
 ## Purpose
-This repository contains a standalone, reproducible pipeline for scraping publicly
-available UFCStats data and producing canonical datasets for downstream use.
+# UFCStats Scraper
 
-The sole responsibility of this project is **data extraction and preparation**.
-It does **not** perform analysis, modeling, visualization, or domain interpretation.
+## Purpose
+This repository provides a reproducible pipeline that mirrors publicly available UFCStats data into structured datasets.
 
-Downstream projects (e.g., analytics, dashboards, research) are expected to
-consume the published outputs of this repository.
+The responsibility of this project is **data extraction and structural preparation only**.
+
+It does NOT perform:
+- analysis
+- modeling
+- prediction
+- visualization
+- domain interpretation
+
+Downstream projects consume these outputs.
+
+---
+
+## Data Source
+https://ufcstats.com  
+Public HTML pages only  
+No private APIs or proprietary feeds are used.
+
+---
+
+## Current Project State (IMPORTANT)
+
+The repository currently implements the **Raw Layer**.
+
+It creates a structured mirror of the UFCStats website so the entire site can be queried locally without repeated scraping.
+
+Future layers (stage and publish) are planned but not yet implemented.
+
+---
+
+## Website → Dataset Mapping
+
+Each dataset corresponds to a page type on UFCStats.
+
+| Website Page | Raw Dataset | Grain |
+|------|------|------|
+| Events list | event_directory | one row per event |
+| Event page | event_details | one row per fight |
+| Fight page | fight_details | one row per fight statistics page |
+| Fighters list | fighter_directory | one row per fighter |
+| Fighter profile | fighter_details | one row per fighter snapshot |
+
+Raw datasets preserve original HTML values exactly as observed.
+
+---
+
+## Pipeline Behavior
+
+Each run performs a full scrape of the site structure:
+
+1. Discover events
+2. Discover fights on each event
+3. Discover fighters
+4. Scrape fight statistics pages
+5. Scrape fighter statistics pages
+
+All outputs from a run belong together and must not be mixed with another run.
+
+---
+
+## Run Organization
+
+Each execution produces a snapshot:
+
+
 
 ---
 
@@ -47,77 +109,99 @@ Each execution of the pipeline corresponds to a single **run date**.
 All files generated during that run are grouped together.
 
 Example structure:
-data/
-runs/
-YYYY-MM-DD/
-raw/
-fighter_directory.csv
-fighter_profiles.csv
-event_directory.csv
-event_pages.csv
-stage/
-stg_fighter_directory.csv
-stg_fighter_profiles.csv
-stg_event_directory.csv
-stg_event_pages.csv
-publish/
-dim_fighter__ufcstats__YYYY-MM-DD.csv
-dim_event__ufcstats__YYYY-MM-DD.csv
-fact_bout__ufcstats__YYYY-MM-DD.csv
-This structure ensures:
-- No cross-run contamination
-- Clear lineage from raw → stage → publish
-- Easy historical comparison between runs
+data/raw/
+event_directory__ufcstats__YYYY-MM-DD.csv
+event_details__ufcstats__YYYY-MM-DD.csv
+fight_details__ufcstats__YYYY-MM-DD.csv
+fighter_directory__ufcstats__YYYY-MM-DD.csv
+fighter_details__ufcstats__YYYY-MM-DD.csv
 
 ---
 
-## Raw Extracts (As-Scraped)
-Raw extracts are direct representations of UFCStats pages.
-They preserve source strings, formatting, and missing-value tokens.
+## Raw Data Principles
 
-Raw extract types include:
-- Fighter directory pages
-- Fighter profile pages
-- Event directory pages
-- Event pages (fight listings)
+Raw data is:
 
-Raw data is **never modified** after ingestion.
+- immutable
+- untyped
+- uncleaned
+- source-faithful
 
----
+Examples:
 
-## Staged Data (Typed & Standardized)
-Staged datasets:
-- Enforce consistent data types (e.g., integers, dates)
-- Normalize units and formats
-- Add completeness flags where appropriate
+- Heights remain `"6' 1\""`
+- Time remains `"3:42"`
+- Percentages remain `"54%"`
 
-Staging does **not**:
-- Filter records
-- Apply business logic
-- Perform aggregation or analysis
+No parsing occurs in the raw layer.
 
 ---
 
-## Published Tables (Reusable Outputs)
-Published tables are the canonical outputs of this repository.
+## Raw Relational Structure
 
-### `dim_fighter__ufcstats`
-- One row per fighter
-- Stable key derived from fighter profile URL
+```mermaid
+erDiagram
 
-### `dim_event__ufcstats`
-- One row per event
-- Stable key derived from event URL
+    EVENT_DIRECTORY {
+        string event_url PK
+        string event_name
+        string event_date_raw
+        string event_location_raw
+        date   snapshot
+    }
 
-### `fact_bout__ufcstats`
-- One row per bout
-- Links fighters and events
-- Represents bout-level outcomes as presented on UFCStats
+    EVENT_DETAILS {
+        string fight_url PK
+        string event_url FK
+        string event_name
+        string fighter_1_url FK
+        string fighter_2_url FK
+        int    fight_order
+        date   snapshot
+    }
 
-These tables are intended for reuse by downstream projects and tools
-(e.g., analytics notebooks, dashboards, databases).
+    FIGHT_DETAILS {
+        string fight_url PK
+        string event_url FK
+        string fighter_1_url FK
+        string fighter_2_url FK
+        string weight_class_raw
+        string method_raw
+        string round_raw
+        string time_raw
+        date   snapshot
+    }
 
----
+    FIGHTER_DIRECTORY {
+        string fighter_url PK
+        string fighter_name
+        string height_raw
+        string weight_raw
+        string reach_raw
+        date   snapshot
+    }
 
-## Data Dictionary
-All columns, data types, keys, and known limitations are documented in:
+    FIGHTER_DETAILS {
+        string fighter_url PK
+        string first_name
+        string last_name
+        string dob_raw
+        string slpm
+        string str_acc
+        string sapm
+        string str_def
+        string td_avg
+        string td_acc
+        string td_def
+        string sub_avg
+        date   snapshot
+    }
+
+    EVENT_DIRECTORY ||--o{ EVENT_DETAILS : contains
+    EVENT_DETAILS ||--|| FIGHT_DETAILS : expands_to
+    FIGHTER_DIRECTORY ||--|| FIGHTER_DETAILS : expands_to
+
+    FIGHTER_DIRECTORY ||--o{ EVENT_DETAILS : fighter_1
+    FIGHTER_DIRECTORY ||--o{ EVENT_DETAILS : fighter_2
+
+
